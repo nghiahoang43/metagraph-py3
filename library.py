@@ -616,7 +616,7 @@ class Metagraph(object):
 
         return self
 
-    def get_closure(self):
+    def get_closure100(self):
         """ Returns the closure matrix (i.e., A*) of the metagraph.
         :return: numpy.matrix
         """
@@ -647,7 +647,39 @@ class Metagraph(object):
         # noinspection PyCallingNonCallable
         return matrix(a_star, dtype=object)
     
-        
+    def get_closure(self):
+        """ Returns the closure matrix (i.e., A*) of the metagraph.
+        :return: numpy.matrix
+        """
+
+        adjacency_matrix = self.adjacency_matrix().tolist()
+      
+        a_star = adjacency_matrix
+        a_star_prev = adjacency_matrix
+        i = 0
+        size = len(self.generating_set)
+        while size > i^2 :
+            #print(' iteration %s --------------'%i)
+            a_star = MetagraphHelper().multiply_adjacency_matrices(a_star_prev,
+                                                                    self.generating_set,
+                                                                    a_star_prev,
+                                                                    self.generating_set)
+            #print('multiply_adjacency_matrices complete')
+            a_star = MetagraphHelper().add_adjacency_matrices(a_star,
+                                                              self.generating_set,
+                                                              adjacency_matrix,
+                                                              self.generating_set)
+
+            #print('add_adjacency_matrices complete')
+
+            if a_star == a_star_prev:
+                break
+
+            a_star_prev = a_star
+            i = i + 1
+        # noinspection PyCallingNonCallable
+        return matrix(a_star, dtype=object)      
+
     def get_all_metapaths_from(self, source, target):
         """ Retrieves all metapaths between given source and target in the metagraph.
         :param source: set

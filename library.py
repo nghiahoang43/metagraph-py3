@@ -27,10 +27,12 @@ class Triple(object):
     def __init__(self, coinputs, cooutputs, edges):
         if edges is None:
             raise MetagraphException('edges', resources['value_null'])
-
         self.coinputs = coinputs
         self.cooutputs = cooutputs
-        self.edges = edges
+        if isinstance(edges, list):
+            self.edges = edges
+        else:
+            self.edges = [edges]
 
     def coinputs(self):
         """ The co-inputs of the Triple object
@@ -68,7 +70,6 @@ class Triple(object):
             return False
         if not isinstance(other,Triple):
             return False
-
         return (self.coinputs == other.coinputs and
                 self.cooutputs == other.cooutputs and
                 len(self.edges) == len(other.edges) and
@@ -152,7 +153,6 @@ class Edge(object):
             return False
         if not isinstance(other, Edge):
             return False
-
         return (self.invertex == other.invertex and
                 self.outvertex == other.outvertex and
                 self.attributes == other.attributes)
@@ -202,6 +202,15 @@ class Metapath(object):
             else:
                 full_desc += ", " + desc
         return 'Metapath({ %s })' % full_desc
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        if not isinstance(other, Metapath):
+            return False
+        return (self.source == other.source and
+                self.target == other.target and
+                self.edge_list == other.edge_list)
 
     def dominates(self, metapath):
         """Checks whether current metapath dominates that provided.
@@ -671,12 +680,10 @@ class Metagraph(object):
             self.add_edges_from(tmp_edge_list)
 
         # compute A* first
-        print('start')
         if self.a_star is None:
             #print('computing closure..')
             self.a_star = self.get_closure().tolist()
             #print('closure computation- %s'%(time.time()- start))
-        print('end')
         metapaths = []
         all_applicable_input_rows = []
         for x_i in source:
@@ -685,43 +692,45 @@ class Metagraph(object):
                 all_applicable_input_rows.append(index)
         cumulative_output_global = []
         cumulative_edges_global = []
+        for i in all_applicable_input_rows:
+            mp_exist_for_row=False
+            cumulative_output_local = []
+            cumulative_edges_local = []
+            for x_j in target:
+                j = list(self.generating_set).index(x_j)
+                if self.a_star[i][j] is not None:
+                    mp_exist_for_row = True
 
-        i = list(self.generating_set).index(list(source)[0])
-        mp_exist_for_row=False
-        cumulative_output_local = []
-        cumulative_edges_local = []
-        for x_j in target:
-            j = list(self.generating_set).index(x_j)
+                    # x_j is already an output
+                    cumulative_output_local.append(x_j)
+                    triples = MetagraphHelper().get_triples(self.a_star[i][j])
+                    for triple in triples:
+                        # retain cooutputs
+                        output = triple.cooutputs
+                        if output is not None:
+                            cumulative_output_local += output
+                        if output is not None:
+                            cumulative_output_global += output
 
-            if self.a_star[i][j] is not None:
-                mp_exist_for_row = True
+                        #... and edges
+                        if isinstance(triple.edges, Edge):
+                            edges = MetagraphHelper().get_edge_list([triple.edges])
+                        else:
+                            edges = MetagraphHelper().get_edge_list(triple.edges)
 
-                # x_j is already an output
-                cumulative_output_local.append(x_j)
-                triples = MetagraphHelper().get_triples(self.a_star[i][j])
-                for triple in triples:
-                    # retain cooutputs
-                    output = triple.cooutputs
-                    if output is not None:
-                        cumulative_output_local += output
-                    if output is not None:
-                        cumulative_output_global += output
+                        for edge in edges:
+                            if edge not in cumulative_edges_local:
+                                cumulative_edges_local.append(edge)
+                            if edge not in cumulative_edges_global:
+                                cumulative_edges_global.append(edge)
 
-                    #... and edges
-                    if isinstance(triple.edges, Edge):
-                        edges = MetagraphHelper().get_edge_list([triple.edges])
-                    else:
-                        edges = MetagraphHelper().get_edge_list(triple.edges)
-
-                    for edge in edges:
-                        if edge not in cumulative_edges_local:
-                            cumulative_edges_local.append(edge)
-                        if edge not in cumulative_edges_global:
-                            cumulative_edges_global.append(edge)
             if not mp_exist_for_row:
-               continue
+                continue
             # check if cumulative outputs form a cover for the target
+            isOutputLocal = False
+            isOutputGlobal = False
             if set(target).issubset(set(cumulative_output_local)):
+                isOutputLocal = True
                 if set(cumulative_edges_local) not in metapaths:
                     # check if there is any temporary edge and change it to real edge
                     for tmp_edge in cumulative_edges_local:
@@ -733,16 +742,17 @@ class Metagraph(object):
                     metapaths.append(set(cumulative_edges_local))
 
             if set(target).issubset(set(cumulative_output_global)):
+                isOutputGlobal = True
                 if set(cumulative_edges_global) not in metapaths:
                     metapaths.append(set(cumulative_edges_global))
 
-            else:
+            if not (isOutputLocal or isOutputGlobal):
                 break
         # remove temporary edges
         if len(tmp_edge_list) > 0:
             self.remove_edges_from(tmp_edge_list)
-        
-        if len(metapaths)>0:
+            
+        if len(metapaths) > 0:
 
             valid_metapaths = []
             processed_edge_lists=[]
@@ -758,11 +768,17 @@ class Metagraph(object):
                             if MetagraphHelper().is_edge_list_included(edge_list2,processed_edge_lists):
                                 continue
                         mp = Metapath(source, target, edge_list2)
-                        if self.is_metapath(mp):
+                        if self.is_metapath(mp) and mp not in valid_metapaths:
                             valid_metapaths.append(mp)
             return valid_metapaths
 
         return None
+
+    def get_a_star(self):
+        if self.a_star is None:
+            #print('computing closure..')
+            self.a_star = self.get_closure().tolist()
+        return self.a_star
 
     def get_all_metapaths_from200(self, source, target):
         if source is None or len(source) == 0:
@@ -861,10 +877,8 @@ class Metagraph(object):
             cumulative_edges_local = []
             for x_j in target:
                 j = list(self.generating_set).index(x_j)
-
                 if self.a_star[i][j] is not None:
                     mp_exist_for_row = True
-
                     # x_j is already an output
                     cumulative_output_local.append(x_j)
                     triples = MetagraphHelper().get_triples(self.a_star[i][j])
@@ -890,7 +904,6 @@ class Metagraph(object):
 
             if not mp_exist_for_row:
                continue
-
             # check if cumulative outputs form a cover for the target
             if set(target).issubset(set(cumulative_output_local)):
                 if set(cumulative_edges_local) not in metapaths:
@@ -2440,42 +2453,42 @@ class MetagraphHelper:
 
         return resultant_adjacency_matrix
 
-    def multiply_components(self, adjacency_matrix1, adjacency_matrix2, generator_set1, i, j, size):
-        """ Multiplies elements of two adjacency matrices.
-        :param adjacency_matrix1: numpy.matrix
-        :param adjacency_matrix2: numpy.matrix
-        :param generator_set1: set
-        :param i: int
-        :param j: int
-        :param size: int
-        :return: list of Triple objects.
-        """
+    # def multiply_components(self, adjacency_matrix1, adjacency_matrix2, generator_set1, i, j, size):
+    #     """ Multiplies elements of two adjacency matrices.
+    #     :param adjacency_matrix1: numpy.matrix
+    #     :param adjacency_matrix2: numpy.matrix
+    #     :param generator_set1: set
+    #     :param i: int
+    #     :param j: int
+    #     :param size: int
+    #     :return: list of Triple objects.
+    #     """
 
-        if adjacency_matrix1 is None:
-            raise MetagraphException('adjacency_matrix1', resources['value_null'])
-        if adjacency_matrix2 is None:
-            raise MetagraphException('adjacency_matrix2', resources['value_null'])
-        if generator_set1 is None or len(generator_set1) == 0:
-            raise MetagraphException('generator_set1', resources['value_null'])
+    #     if adjacency_matrix1 is None:
+    #         raise MetagraphException('adjacency_matrix1', resources['value_null'])
+    #     if adjacency_matrix2 is None:
+    #         raise MetagraphException('adjacency_matrix2', resources['value_null'])
+    #     if generator_set1 is None or len(generator_set1) == 0:
+    #         raise MetagraphException('generator_set1', resources['value_null'])
 
-        result = []
-        # computes the outermost loop (ie., k=1...K where K is the size of each input matrix)
-        for k in range(size):
-            a_ik = adjacency_matrix1[i][k]
-            b_kj = adjacency_matrix2[k][j]
-            #print('multiply_triple_lists')
-            temp = self.multiply_triple_lists(a_ik, b_kj, list(generator_set1)[i],
-                                              list(generator_set1)[j], list(generator_set1)[k])
-            if temp is not None:
-                #print('len(temp): %s'%len(temp))
-                for triple in temp:
-                    if not MetagraphHelper().is_triple_in_list(triple, result):
-                        result.append(triple)
-                    #if triple not in result: result.append(triple)
-        if len(result) == 0:
-            return None
+    #     result = []
+    #     # computes the outermost loop (ie., k=1...K where K is the size of each input matrix)
+    #     for k in range(size):
+    #         a_ik = adjacency_matrix1[i][k]
+    #         b_kj = adjacency_matrix2[k][j]
+    #         #print('multiply_triple_lists')
+    #         temp = self.multiply_triple_lists(a_ik, b_kj, list(generator_set1)[i],
+    #                                           list(generator_set1)[j], list(generator_set1)[k])
+    #         if temp is not None:
+    #             #print('len(temp): %s'%len(temp))
+    #             for triple in temp:
+    #                 if not MetagraphHelper().is_triple_in_list(triple, result):
+    #                     result.append(triple)
+    #                 #if triple not in result: result.append(triple)
+    #     if len(result) == 0:
+    #         return None
 
-        return result
+    #     return result
 
     def multiply_components(self, adjacency_matrix1, adjacency_matrix2, generator_set1, i, j, size):
         """ Multiplies elements of two adjacency matrices.
@@ -2551,7 +2564,6 @@ class MetagraphHelper:
 
         if triple1 is None or triple2 is None:
             return None
-
         # compute alpha(R)
         alpha_r = triple2.coinputs
         if triple2.coinputs is None:
@@ -2589,7 +2601,7 @@ class MetagraphHelper:
             if isinstance(triple2.edges, Edge):
                 truncated.append(triple2.edges)
             else:
-                truncated.append = copy.copy(triple2.edges)
+                truncated.append(copy.copy(triple2.edges))
 
         gamma_r = truncated
 

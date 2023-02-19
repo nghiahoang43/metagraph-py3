@@ -156,6 +156,14 @@ class Edge(object):
         return (self.invertex == other.invertex and
                 self.outvertex == other.outvertex and
                 self.attributes == other.attributes)
+    def __lt__(self, other):
+        if other is None:
+            return False
+        if not isinstance(other, Edge):
+            return False
+        self_vertex_lists = [sorted(list(self.invertex)), sorted(list(self.outvertex))]
+        other_vertex_lists = [sorted(list(other.invertex)), sorted(list(other.outvertex))]
+        return self_vertex_lists < other_vertex_lists
 
     def __hash__(self):
         return hash(str(self))
@@ -210,7 +218,7 @@ class Metapath(object):
             return False
         return (self.source == other.source and
                 self.target == other.target and
-                self.edge_list == other.edge_list)
+                sorted(self.edge_list) == sorted(other.edge_list))
 
     def dominates(self, metapath):
         """Checks whether current metapath dominates that provided.
@@ -630,10 +638,10 @@ class Metagraph(object):
         a_star = adjacency_matrix
 
         for i in range(size):
-            #print(' iteration %s --------------'%i)
-            a[i+1] = MetagraphHelper().multiply_adjacency_matrices(a[i],
+            #print(' iteration %s --------------'%i)                                                   self.generating_set)
+            a[i+1] = MetagraphHelper().multiply_adjacency_matrices(adjacency_matrix,
                                                                    self.generating_set,
-                                                                   adjacency_matrix,
+                                                                   a[i],
                                                                    self.generating_set)
             #print('multiply_adjacency_matrices complete')
             a_star = MetagraphHelper().add_adjacency_matrices(a_star,
@@ -678,8 +686,8 @@ class Metagraph(object):
             a_star_prev = a_star
             i = i + 1
         # noinspection PyCallingNonCallable
-        return matrix(a_star, dtype=object)      
-
+        return matrix(a_star, dtype=object)  
+        
     def get_all_metapaths_from(self, source, target):
         """ Retrieves all metapaths between given source and target in the metagraph.
         :param source: set
@@ -765,11 +773,11 @@ class Metagraph(object):
                 isOutputLocal = True
                 if set(cumulative_edges_local) not in metapaths:
                     # check if there is any temporary edge and change it to real edge
-                    for tmp_edge in cumulative_edges_local:
+                    for tmp_edge in set(cumulative_edges_local):
                         if tmp_edge in tmp_edge_list:
+                            cumulative_edges_local.remove(tmp_edge)
                             for edge in self.edges:
                                 if edge not in tmp_edge_list and edge.invertex.issubset(tmp_edge.invertex) and edge.outvertex == tmp_edge.outvertex:
-                                    cumulative_edges_local.remove(tmp_edge)
                                     cumulative_edges_local.append(edge)
                     metapaths.append(set(cumulative_edges_local))
 
@@ -783,9 +791,7 @@ class Metagraph(object):
         # remove temporary edges
         if len(tmp_edge_list) > 0:
             self.remove_edges_from(tmp_edge_list)
-            
         if len(metapaths) > 0:
-
             valid_metapaths = []
             processed_edge_lists=[]
             from itertools import combinations
@@ -2371,10 +2377,8 @@ class MetagraphHelper:
                         combined_adjacency_matrix[i][j] = adjacency_matrix1[i][j]
                     else:
                         temp = list()
-                        temp.append(adjacency_matrix1[i][j])
-                        temp.append(adjacency_matrix2[i][j])
+                        temp = (adjacency_matrix1[i][j]+adjacency_matrix2[i][j])
                         combined_adjacency_matrix[i][j] = temp
-
         else:
             # generating sets overlap but are different...need to redefine adjacency matrices before adding them
             combined_generating_set = generator_set1.union(generator_set2)
@@ -2409,7 +2413,10 @@ class MetagraphHelper:
                             if not triple in modified_adjacency_matrix1[i][j]:
                                 temp.append(triple)
                         combined_adjacency_matrix[i][j] = temp
-
+        # for i in range(size):
+        #     for j in range(size):
+        #         print(combined_adjacency_matrix[i][j])
+        #         print()
         return combined_adjacency_matrix
 
     def get_triples(self, nested_triples_list):
@@ -2627,14 +2634,13 @@ class MetagraphHelper:
                 truncated.append(triple1.edges)
             else:
                 if isinstance(triple1.edges, list):
-                    truncated = copy.copy(triple1.edges)
+                    truncated+=triple1.edges
 
         if triple2.edges not in truncated:
             if isinstance(triple2.edges, Edge):
                 truncated.append(triple2.edges)
             else:
-                truncated.append(copy.copy(triple2.edges))
-
+                truncated+=triple2.edges
         gamma_r = truncated
 
         return Triple(alpha_r, beta_r, gamma_r)

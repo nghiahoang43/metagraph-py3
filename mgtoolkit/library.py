@@ -676,7 +676,7 @@ class Metagraph(object):
         a_star_prev = adjacency_matrix
         i = 1
         size = len(self.generating_set)
-        while size > i^2 :
+        while size > i*i :
             #print(' iteration %s --------------'%i)
             a_star = MetagraphHelper().multiply_adjacency_matrices(a_star_prev,
                                                                     self.generating_set,

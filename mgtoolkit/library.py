@@ -74,6 +74,16 @@ class Triple(object):
                 self.cooutputs == other.cooutputs and
                 len(self.edges) == len(other.edges) and
                 self.edges == other.edges)
+
+    def __lt__(self, other):
+        if other is None:
+            return False
+        if not isinstance(other,Triple):
+            return False
+        self_vertex_lists = [sorted(list(self.coinputs)), sorted(list(self.cooutputs)), sorted(self.edges)]
+        other_vertex_lists = [sorted(list(other.coinputs)), sorted(list(other.cooutputs)), sorted(other.edges)]
+        return self_vertex_lists < other_vertex_lists
+
     def __hash__(self):
         return hash(str(self))
 
@@ -2586,7 +2596,7 @@ class MetagraphHelper:
                     triples_list.append(temp)
 
         if len(triples_list)>0:
-            return list(set(triples_list))
+            return sorted(list(set(triples_list)))
 
         return []
 

@@ -616,7 +616,7 @@ class Metagraph(object):
 
         return self
 
-    def get_closure100(self):
+    def get_closure(self):
         """ Returns the closure matrix (i.e., A*) of the metagraph.
         :return: numpy.matrix
         """
@@ -647,7 +647,7 @@ class Metagraph(object):
         # noinspection PyCallingNonCallable
         return matrix(a_star, dtype=object)
     
-    def get_closure(self):
+    def get_closure100(self):
         """ Returns the closure matrix (i.e., A*) of the metagraph.
         :return: numpy.matrix
         """

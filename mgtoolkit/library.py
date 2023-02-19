@@ -80,9 +80,9 @@ class Triple(object):
             return False
         if not isinstance(other,Triple):
             return False
-        self_vertex_lists = [sorted(list(self.coinputs)), sorted(list(self.cooutputs)), sorted(self.edges)]
-        other_vertex_lists = [sorted(list(other.coinputs)), sorted(list(other.cooutputs)), sorted(other.edges)]
-        return self_vertex_lists < other_vertex_lists
+        self_sort_lists = [sorted(list(self.coinputs), key=lambda x: (x is None, x)), sorted(list(self.cooutputs), key=lambda x: (x is None, x)), sorted(self.edges)]
+        other_sort_lists = [sorted(list(other.coinputs), key=lambda x: (x is None, x)), sorted(list(other.cooutputs), key=lambda x: (x is None, x)), sorted(other.edges)]
+        return self_sort_lists < other_sort_lists
 
     def __hash__(self):
         return hash(str(self))
@@ -171,8 +171,8 @@ class Edge(object):
             return False
         if not isinstance(other, Edge):
             return False
-        self_vertex_lists = [sorted(list(self.invertex)), sorted(list(self.outvertex))]
-        other_vertex_lists = [sorted(list(other.invertex)), sorted(list(other.outvertex))]
+        self_vertex_lists = [sorted(list(self.invertex), key=lambda x: (x is None, x)), sorted(list(self.outvertex), key=lambda x: (x is None, x))]
+        other_vertex_lists = [sorted(list(other.invertex), key=lambda x: (x is None, x)), sorted(list(other.outvertex), key=lambda x: (x is None, x))]
         return self_vertex_lists < other_vertex_lists
 
     def __hash__(self):

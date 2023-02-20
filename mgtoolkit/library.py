@@ -75,15 +75,6 @@ class Triple(object):
                 len(self.edges) == len(other.edges) and
                 self.edges == other.edges)
 
-    def __lt__(self, other):
-        if other is None:
-            return False
-        if not isinstance(other,Triple):
-            return False
-        self_sort_lists = [sorted(list(self.coinputs), key=lambda x: (x is None, x)), sorted(list(self.cooutputs), key=lambda x: (x is None, x)), sorted(self.edges)]
-        other_sort_lists = [sorted(list(other.coinputs), key=lambda x: (x is None, x)), sorted(list(other.cooutputs), key=lambda x: (x is None, x)), sorted(other.edges)]
-        return self_sort_lists < other_sort_lists
-
     def __hash__(self):
         return hash(str(self))
 
@@ -166,14 +157,6 @@ class Edge(object):
         return (self.invertex == other.invertex and
                 self.outvertex == other.outvertex and
                 self.attributes == other.attributes)
-    def __lt__(self, other):
-        if other is None:
-            return False
-        if not isinstance(other, Edge):
-            return False
-        self_vertex_lists = [sorted(list(self.invertex), key=lambda x: (x is None, x)), sorted(list(self.outvertex), key=lambda x: (x is None, x))]
-        other_vertex_lists = [sorted(list(other.invertex), key=lambda x: (x is None, x)), sorted(list(other.outvertex), key=lambda x: (x is None, x))]
-        return self_vertex_lists < other_vertex_lists
 
     def __hash__(self):
         return hash(str(self))
@@ -228,7 +211,7 @@ class Metapath(object):
             return False
         return (self.source == other.source and
                 self.target == other.target and
-                sorted(self.edge_list) == sorted(other.edge_list))
+                set(self.edge_list) == set(other.edge_list))
 
     def dominates(self, metapath):
         """Checks whether current metapath dominates that provided.
@@ -2596,7 +2579,7 @@ class MetagraphHelper:
                     triples_list.append(temp)
 
         if len(triples_list)>0:
-            return sorted(list(set(triples_list)))
+            return list(set(triples_list))
 
         return []
 

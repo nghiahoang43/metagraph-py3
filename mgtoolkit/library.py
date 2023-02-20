@@ -2621,20 +2621,33 @@ class MetagraphHelper:
             beta_r = beta_r.difference(({x_j}))
 
         # compute gamma(R)
-        truncated = []
-        if triple1.edges not in truncated:
-            if isinstance(triple1.edges, Edge):
-                truncated.append(triple1.edges)
-            else:
-                if isinstance(triple1.edges, list):
-                    truncated+=triple1.edges
+        #truncated = []
+        # if triple1.edges not in truncated:
+        #     if isinstance(triple1.edges, Edge):
+        #         truncated.append(triple1.edges)
+        #     else:
+        #         if isinstance(triple1.edges, list):
+        #             truncated+=triple1.edges
 
-        if triple2.edges not in truncated:
-            if isinstance(triple2.edges, Edge):
-                truncated.append(triple2.edges)
+        # if triple2.edges not in truncated:
+        #     if isinstance(triple2.edges, Edge):
+        #         truncated.append(triple2.edges)
+        #     else:
+        #         truncated+=triple2.edges
+        # 
+        # gamma_r = truncated   
+      
+        
+        gamma_r  = [triple1.edges] if isinstance(triple1.edges, Edge) else triple1.edges
+
+        # Truncate the concaternation at the first duplicate. 
+        for e in triple2.edges:
+            if e not in gamma_r:
+                gamma_r.append(e)
             else:
-                truncated+=triple2.edges
-        gamma_r = truncated
+                break
+          
+    
 
         return Triple(alpha_r, beta_r, gamma_r)
 
